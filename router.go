@@ -41,12 +41,22 @@ func (p *Router) Use(handlers ...HandlerFunc) {
 
 // Crud crud
 func (p *Router) Crud(path string, list []HandlerFunc, create []HandlerFunc, read []HandlerFunc, update []HandlerFunc, delete []HandlerFunc) {
-	p.GET(path, list...)
-	p.POST(path, create...)
+	if list != nil {
+		p.GET(path, list...)
+	}
+	if create != nil {
+		p.POST(path, create...)
+	}
 	child := path + "/{id}"
-	p.GET(child, read...)
-	p.POST(child, update...)
-	p.DELETE(child, delete...)
+	if read != nil {
+		p.GET(child, read...)
+	}
+	if update != nil {
+		p.POST(child, update...)
+	}
+	if delete != nil {
+		p.DELETE(child, delete...)
+	}
 }
 
 // Group creates a new router group
