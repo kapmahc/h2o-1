@@ -46,8 +46,13 @@ func (p *Context) Redirect(code int, url string) {
 	http.Redirect(p.Writer, p.Request, url, code)
 }
 
-// Header get header
-func (p *Context) Header(k string) string {
+// SetHeader set header
+func (p *Context) SetHeader(k, v string) {
+	p.Request.Header.Set(k, v)
+}
+
+// GetHeader get header
+func (p *Context) GetHeader(k string) string {
 	return p.Request.Header.Get(k)
 }
 
@@ -59,11 +64,11 @@ func (p *Context) Param(k string) string {
 // ClientIP client ip
 func (p *Context) ClientIP() string {
 	// -------------
-	if ip := strings.TrimSpace(p.Header("X-Real-Ip")); ip != "" {
+	if ip := strings.TrimSpace(p.GetHeader("X-Real-Ip")); ip != "" {
 		return ip
 	}
 	// -------------
-	ip := p.Header("X-Forwarded-For")
+	ip := p.GetHeader("X-Forwarded-For")
 	if idx := strings.IndexByte(ip, ','); idx >= 0 {
 		ip = ip[0:idx]
 	}
