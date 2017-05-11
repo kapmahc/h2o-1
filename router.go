@@ -1,13 +1,18 @@
 package h2o
 
 import (
+	"context"
+	"fmt"
 	"net/http"
+	"os"
+	"os/signal"
 	"reflect"
 	"runtime"
 	"time"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/gorilla/mux"
+	"github.com/rs/cors"
 )
 
 // HandlerFunc an adapter to allow the use of ordinary functions as HTTP handler
@@ -77,7 +82,13 @@ func (p *Router) Handle(methods []string, path string, handlers ...HandlerFunc) 
 }
 
 // Run attaches the router to a http.Server and starts listening and serving HTTP requests.
-func (p *Router) Run(port int, grace bool) error {
+func (p *Router) Run(port int, grace bool, options cors.Options) error {
+	addr := fmt.Sprintf(":%d", port)
+	log.Infof(
+		"application starting on http://localhost:%d",
+		port,
+	)
+	// --------------
 	rt := mux.NewRouter()
 	for _, r := range p.routes {
 		rt.HandleFunc(r.path, func(w http.ResponseWriter, r *http.Request) {
@@ -102,6 +113,33 @@ func (p *Router) Run(port int, grace bool) error {
 			log.Infof("done %s", time.Now().Sub(begin))
 		}).Methods(r.methods...)
 	}
+	// ----------------
+	hnd := cors.New(options).Handler(rt)
+	// ----------------
+	if grace {
+		srv := &http.Server{Addr: addr, Handler: hnd}
+		go func() {
+			// service connections
+			if err := srv.ListenAndServe(); err != nil {
+				log.Error(err)
+			}
+		}()
 
-	return nil
+		// Wait for interrupt signal to gracefully shutdown the server with
+		// a timeout of 5 seconds.
+		quit := make(chan os.Signal)
+		signal.Notify(quit, os.Interrupt)
+		<-quit
+		log.Warningf("shutdown server ...")
+
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := srv.Shutdown(ctx); err != nil {
+			return err
+		}
+		log.Info("server exist")
+		return nil
+	}
+	// ----------------
+	return http.ListenAndServe(addr, hnd)
 }
