@@ -1,0 +1,6 @@
+# Go
+/vendor/*/
+
+# Editor
+.*.swp
+.*.un~
