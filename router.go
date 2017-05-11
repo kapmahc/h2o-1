@@ -6,8 +6,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"reflect"
-	"runtime"
 	"time"
 
 	log "github.com/Sirupsen/logrus"
@@ -112,31 +110,19 @@ func (p *Router) Run(port int, grace bool, cro cors.Options, rdo render.Options)
 	de := form.NewDecoder()
 	rd := render.New(rdo)
 	for _, r := range p.routes {
-		rt.HandleFunc(r.path, func(w http.ResponseWriter, r *http.Request) {
-			begin := time.Now()
-			ctx := Context{
-				Request: r,
-				Writer:  w,
-				vars:    mux.Vars(r),
-
-				dec: de,
-				val: va,
-				rdr: rd,
-			}
-			log.Infof("%s %s %s %s", r.Proto, r.Method, r.RequestURI, ctx.ClientIP())
-			for _, h := range p.handlers {
-				log.Debugf("call %s", runtime.FuncForPC(reflect.ValueOf(h).Pointer()).Name())
-				if e := h(&ctx); e != nil {
-					log.Error(e)
-					s := http.StatusInternalServerError
-					if he, ok := e.(*HTTPError); ok {
-						s = he.Status
-					}
-					http.Error(w, e.Error(), s)
+		rt.HandleFunc(
+			r.path,
+			r.handle(func(w http.ResponseWriter, r *http.Request) *Context {
+				return &Context{
+					Request: r,
+					Writer:  w,
+					vars:    mux.Vars(r),
+					dec:     de,
+					val:     va,
+					rdr:     rd,
 				}
-			}
-			log.Infof("done %s", time.Now().Sub(begin))
-		}).Methods(r.methods...)
+			}),
+		).Methods(r.methods...)
 	}
 	// ----------------
 	hnd := cors.New(cro).Handler(rt)
