@@ -6,10 +6,9 @@ import (
 	"net/http"
 	"strings"
 
-	validator "gopkg.in/go-playground/validator.v9"
-
 	"github.com/go-playground/form"
 	"github.com/unrolled/render"
+	validator "gopkg.in/go-playground/validator.v9"
 )
 
 // K key type
@@ -92,6 +91,11 @@ func (p *Context) JSON(s int, v interface{}) error {
 // XML write xml
 func (p *Context) XML(s int, v interface{}) error {
 	return p.rdr.XML(p.Writer, s, v)
+}
+
+// HTML write xml
+func (p *Context) HTML(s int, t string, v interface{}) error {
+	return p.rdr.HTML(p.Writer, s, t, v)
 }
 
 // Bind binds the passed struct pointer
