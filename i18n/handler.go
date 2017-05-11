@@ -13,19 +13,22 @@ const (
 )
 
 // Middleware detect language from http request
-func (p *I18n) Middleware(c *h2o.Context) error {
+func (p *I18n) Middleware() (h2o.HandlerFunc, error) {
 	langs, err := p.Store.Languages()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	var tags []language.Tag
 	for _, l := range langs {
 		tags = append(tags, language.Make(l))
 	}
 	matcher := language.NewMatcher(tags)
-	tag, _, _ := matcher.Match(language.Make(p.detect(c.Request)))
-	c.Set(LOCALE, tag.String())
-	return nil
+
+	return func(c *h2o.Context) error {
+		tag, _, _ := matcher.Match(language.Make(p.detect(c.Request)))
+		c.Set(LOCALE, tag.String())
+		return nil
+	}, nil
 }
 
 func (p *I18n) detect(r *http.Request) string {

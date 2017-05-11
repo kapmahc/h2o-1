@@ -2,11 +2,14 @@ package h2o
 
 import (
 	"context"
-	"encoding/json"
-	"encoding/xml"
 	"net"
 	"net/http"
 	"strings"
+
+	validator "gopkg.in/go-playground/validator.v9"
+
+	"github.com/go-playground/form"
+	"github.com/unrolled/render"
 )
 
 // K key type
@@ -21,6 +24,9 @@ type Context struct {
 	Request *http.Request
 
 	vars map[string]string
+	val  *validator.Validate
+	dec  *form.Decoder
+	rdr  *render.Render
 }
 
 // Set set
@@ -75,12 +81,22 @@ func (p *Context) ClientIP() string {
 
 // JSON write json
 func (p *Context) JSON(s int, v interface{}) error {
-	enc := json.NewEncoder(p.Writer)
-	return enc.Encode(v)
+	return p.rdr.JSON(p.Writer, s, v)
 }
 
 // XML write xml
 func (p *Context) XML(s int, v interface{}) error {
-	enc := xml.NewEncoder(p.Writer)
-	return enc.Encode(v)
+	return p.rdr.XML(p.Writer, s, v)
+}
+
+// Bind binds the passed struct pointer
+func (p *Context) Bind(v interface{}) error {
+	e := p.Request.ParseForm()
+	if e == nil {
+		e = p.dec.Decode(v, p.Request.Form)
+	}
+	if e == nil {
+		e = p.val.Struct(v)
+	}
+	return e
 }

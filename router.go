@@ -11,8 +11,11 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
+	"github.com/go-playground/form"
 	"github.com/gorilla/mux"
 	"github.com/rs/cors"
+	"github.com/unrolled/render"
+	validator "gopkg.in/go-playground/validator.v9"
 )
 
 // HandlerFunc an adapter to allow the use of ordinary functions as HTTP handler
@@ -31,6 +34,21 @@ type Router struct {
 	path     string
 	handlers []HandlerFunc
 	routes   []*route
+}
+
+// Use use middlewares
+func (p *Router) Use(handlers ...HandlerFunc) {
+	p.handlers = append(p.handlers, handlers...)
+}
+
+// Crud crud
+func (p *Router) Crud(path string, list []HandlerFunc, create []HandlerFunc, read []HandlerFunc, update []HandlerFunc, delete []HandlerFunc) {
+	p.GET(path, list...)
+	p.POST(path, create...)
+	child := path + "/{id}"
+	p.GET(child, read...)
+	p.POST(child, update...)
+	p.DELETE(child, delete...)
 }
 
 // Group creates a new router group
@@ -82,7 +100,7 @@ func (p *Router) Handle(methods []string, path string, handlers ...HandlerFunc) 
 }
 
 // Run attaches the router to a http.Server and starts listening and serving HTTP requests.
-func (p *Router) Run(port int, grace bool, options cors.Options) error {
+func (p *Router) Run(port int, grace bool, cro cors.Options, rdo render.Options) error {
 	addr := fmt.Sprintf(":%d", port)
 	log.Infof(
 		"application starting on http://localhost:%d",
@@ -90,6 +108,9 @@ func (p *Router) Run(port int, grace bool, options cors.Options) error {
 	)
 	// --------------
 	rt := mux.NewRouter()
+	va := validator.New()
+	de := form.NewDecoder()
+	rd := render.New(rdo)
 	for _, r := range p.routes {
 		rt.HandleFunc(r.path, func(w http.ResponseWriter, r *http.Request) {
 			begin := time.Now()
@@ -97,6 +118,10 @@ func (p *Router) Run(port int, grace bool, options cors.Options) error {
 				Request: r,
 				Writer:  w,
 				vars:    mux.Vars(r),
+
+				dec: de,
+				val: va,
+				rdr: rd,
 			}
 			log.Infof("%s %s %s %s", r.Proto, r.Method, r.RequestURI, ctx.ClientIP())
 			for _, h := range p.handlers {
@@ -114,7 +139,7 @@ func (p *Router) Run(port int, grace bool, options cors.Options) error {
 		}).Methods(r.methods...)
 	}
 	// ----------------
-	hnd := cors.New(options).Handler(rt)
+	hnd := cors.New(cro).Handler(rt)
 	// ----------------
 	if grace {
 		srv := &http.Server{Addr: addr, Handler: hnd}
@@ -142,4 +167,17 @@ func (p *Router) Run(port int, grace bool, options cors.Options) error {
 	}
 	// ----------------
 	return http.ListenAndServe(addr, hnd)
+}
+
+// WalkFunc walk func
+type WalkFunc func(methods []string, path string, handlers ...HandlerFunc) error
+
+// Walk walk routes
+func (p *Router) Walk(f WalkFunc) error {
+	for _, r := range p.routes {
+		if e := f(r.methods, r.path, r.handlers...); e != nil {
+			return e
+		}
+	}
+	return nil
 }
