@@ -4,7 +4,9 @@ import (
 	"context"
 	"net"
 	"net/http"
+	"path"
 	"strings"
+	"text/template"
 
 	"github.com/go-playground/form"
 	"github.com/unrolled/render"
@@ -93,9 +95,18 @@ func (p *Context) XML(s int, v interface{}) error {
 	return p.rdr.XML(p.Writer, s, v)
 }
 
-// HTML write xml
+// HTML write html
 func (p *Context) HTML(s int, t string, v interface{}) error {
 	return p.rdr.HTML(p.Writer, s, t, v)
+}
+
+// TEXT parse text template
+func (p *Context) TEXT(s int, n string, v interface{}) error {
+	t, e := template.ParseFiles(path.Join("templates", n))
+	if e != nil {
+		return e
+	}
+	return t.Execute(p.Writer, v)
 }
 
 // Bind binds the passed struct pointer
