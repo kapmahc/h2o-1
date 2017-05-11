@@ -62,35 +62,35 @@ func (p *Router) Group(group func(*Router), path string, handlers ...HandlerFunc
 
 // GET http get
 func (p *Router) GET(path string, handlers ...HandlerFunc) {
-	p.Handle([]string{http.MethodGet}, path, handlers...)
+	p.Handle(http.MethodGet, path, handlers...)
 }
 
 // POST http post
 func (p *Router) POST(path string, handlers ...HandlerFunc) {
-	p.Handle([]string{http.MethodPost}, path, handlers...)
+	p.Handle(http.MethodPost, path, handlers...)
 }
 
 // PUT http put
 func (p *Router) PUT(path string, handlers ...HandlerFunc) {
-	p.Handle([]string{http.MethodPut}, path, handlers...)
+	p.Handle(http.MethodPut, path, handlers...)
 }
 
 // PATCH http patch
 func (p *Router) PATCH(path string, handlers ...HandlerFunc) {
-	p.Handle([]string{http.MethodPatch}, path, handlers...)
+	p.Handle(http.MethodPatch, path, handlers...)
 }
 
 // DELETE http delete
 func (p *Router) DELETE(path string, handlers ...HandlerFunc) {
-	p.Handle([]string{http.MethodDelete}, path, handlers...)
+	p.Handle(http.MethodDelete, path, handlers...)
 }
 
 // Handle registers a new request handle and middleware with the given path and method.
-func (p *Router) Handle(methods []string, path string, handlers ...HandlerFunc) {
+func (p *Router) Handle(method, path string, handlers ...HandlerFunc) {
 	p.routes = append(
 		p.routes,
 		&route{
-			methods:  methods,
+			method:   method,
 			path:     p.path + path,
 			handlers: append(p.handlers, handlers...),
 		},
@@ -122,7 +122,7 @@ func (p *Router) Run(port int, grace bool, cro cors.Options, rdo render.Options)
 					rdr:     rd,
 				}
 			}),
-		).Methods(r.methods...)
+		).Methods(r.method)
 	}
 	// ----------------
 	hnd := cors.New(cro).Handler(rt)
@@ -156,12 +156,12 @@ func (p *Router) Run(port int, grace bool, cro cors.Options, rdo render.Options)
 }
 
 // WalkFunc walk func
-type WalkFunc func(methods []string, path string, handlers ...HandlerFunc) error
+type WalkFunc func(method string, path string, handlers ...HandlerFunc) error
 
 // Walk walk routes
 func (p *Router) Walk(f WalkFunc) error {
 	for _, r := range p.routes {
-		if e := f(r.methods, r.path, r.handlers...); e != nil {
+		if e := f(r.method, r.path, r.handlers...); e != nil {
 			return e
 		}
 	}

@@ -11,7 +11,7 @@ import (
 
 type route struct {
 	path     string
-	methods  []string
+	method   string
 	handlers []HandlerFunc
 }
 
